@@ -1,4 +1,4 @@
-//
+  //
 //  ContentView.swift
 //  FocusTimer
 //
@@ -8,17 +8,16 @@
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-    }
-}
+    @State private var currentDate = Date.now
+    @State var countDown: Double = 0
+    let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
-#Preview {
-    ContentView()
+    var body: some View {
+        Text("\(countDown)")
+            .onReceive(timer) { input in
+                countDown = round(input.timeIntervalSince(currentDate))
+                print(Date.now)
+                print(countDown)
+            }
+    }
 }

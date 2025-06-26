@@ -8,14 +8,17 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var currentDate = Date.now
+    @State var countDown: Int = 0
+    let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        Text("\(countDown)")
+            .onReceive(timer) { input in
+                countDown = Int(round(input.timeIntervalSince(currentDate)))
+                print(Date.now)
+                print(countDown)
+            }
     }
 }
 
