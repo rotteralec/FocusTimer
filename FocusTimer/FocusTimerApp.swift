@@ -11,7 +11,7 @@ import SwiftUI
 struct FocusTimerApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HapticView()
         }
     }
 }
