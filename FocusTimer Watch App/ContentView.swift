@@ -36,13 +36,15 @@ struct WatchHapticView: View {
     
     func playHapticFeedback() {
         WKInterfaceDevice.current().play(.failure)
+        WKInterfaceDevice.current().play(.failure)
+        WKInterfaceDevice.current().play(.failure)
         print("Playing watch haptic...")
     }
     
     func startHaptics() {
         timer?.invalidate()
         
-        timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { _ in
             playHapticFeedback()
             
         }
