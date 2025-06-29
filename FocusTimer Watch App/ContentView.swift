@@ -56,7 +56,7 @@ struct WatchHapticView: View {
         }
         // Apply the digital crown rotation effect directly to the view for wider target
         .focusable() // Make the view focusable for digital crown
-        .digitalCrownRotation($intervalSeconds, from: 1.0, through: 60.0, by: 1.0, sensitivity: .low)
+        .digitalCrownRotation($intervalSeconds, from: 1.0, through: 600.0, by: 1.0, sensitivity: .low)
     }
 
     func playHapticFeedback() {
