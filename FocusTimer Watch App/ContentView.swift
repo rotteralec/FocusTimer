@@ -17,6 +17,7 @@ struct WatchHapticView: View {
     @State private var selectedSeconds: Int = 5
     
     @State private var isHapticsRunning: Bool = false
+    private var wheelWidth: CGFloat = 40.0
     
     var totalInterval: TimeInterval {
         Double(selectedHours * 3600 + selectedMinutes * 60 + selectedSeconds)
@@ -31,33 +32,33 @@ struct WatchHapticView: View {
                 // MARK: - Time Pickers (Scrollable Wheels)
                 HStack {
                     // Hours Picker
-                    Picker("Hours", selection: $selectedHours) {
+                    Picker("H", selection: $selectedHours) {
                         ForEach(0..<24) { hour in
-                            Text("\(hour)h").tag(hour)
+                            Text("\(hour)").tag(hour)
                         }
                     }
                     .pickerStyle(.wheel)
-                    .frame(width: 45)
+                    .frame(width: wheelWidth)
                     .clipped() // Crucial for preventing text overflow
 
                     // Minutes Picker
-                    Picker("Minutes", selection: $selectedMinutes) {
+                    Picker("M", selection: $selectedMinutes) {
                         ForEach(0..<60) { minute in
-                            Text("\(minute)m").tag(minute)
+                            Text("\(minute)").tag(minute)
                         }
                     }
                     .pickerStyle(.wheel)
-                    .frame(width: 45) // Adjust width
+                    .frame(width: wheelWidth) // Adjust width
                     .clipped()
 
                     // Seconds Picker
-                    Picker("Seconds", selection: $selectedSeconds) {
+                    Picker("S", selection: $selectedSeconds) {
                         ForEach(0..<60) { second in
-                            Text("\(second)s").tag(second)
+                            Text("\(second)").tag(second)
                         }
                     }
                     .pickerStyle(.wheel)
-                    .frame(width: 45)
+                    .frame(width: wheelWidth)
                     .clipped()
                 }
                 .padding(.horizontal, -8) // Slightly reduce horizontal padding if needed
