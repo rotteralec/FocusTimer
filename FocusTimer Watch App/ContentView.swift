@@ -11,57 +11,82 @@ import WatchKit
 
 struct WatchHapticView: View {
     @State private var timer: Timer?
-    // Use a @State variable for the interval, initialized to 5 seconds
-    @State private var intervalSeconds: Double = 5.0
+    
+    @State private var selectedHours: Int = 0
+    @State private var selectedMinutes: Int = 0
+    @State private var selectedSeconds: Int = 5
+    
     @State private var isHapticsRunning: Bool = false
+    
+    var totalInterval: TimeInterval {
+        Double(selectedHours * 3600 + selectedMinutes * 60 + selectedSeconds)
+    }
 
     var body: some View {
-        VStack {
-            Text("Haptic Interval")
-                .font(.headline)
-                .padding(.bottom, 1)
+            VStack {
+                Text("Haptic Interval")
+                    .font(.headline)
+                    .padding(.bottom, 1)
 
-            // Display the current interval, formatted as a whole number
-            Text("\(Int(intervalSeconds)) seconds")
-                .font(.title2)
-                .foregroundColor(.accentColor)
-                .padding(.bottom, 10)
+                // MARK: - Time Pickers (Scrollable Wheels)
+                HStack {
+                    // Hours Picker
+                    Picker("Hours", selection: $selectedHours) {
+                        ForEach(0..<24) { hour in
+                            Text("\(hour)h").tag(hour)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(width: 45)
+                    .clipped() // Crucial for preventing text overflow
 
-            // Stepper to adjust the interval
-            // Using a Stepper automatically enables Digital Crown interaction for the value
-            Stepper(value: $intervalSeconds, in: 1.0...600.0, step: 1.0) {
-                Text("Adjust Interval")
-                    .font(.footnote)
+                    // Minutes Picker
+                    Picker("Minutes", selection: $selectedMinutes) {
+                        ForEach(0..<60) { minute in
+                            Text("\(minute)m").tag(minute)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(width: 45) // Adjust width
+                    .clipped()
+
+                    // Seconds Picker
+                    Picker("Seconds", selection: $selectedSeconds) {
+                        ForEach(0..<60) { second in
+                            Text("\(second)s").tag(second)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(width: 45)
+                    .clipped()
+                }
+                .padding(.horizontal, -8) // Slightly reduce horizontal padding if needed
+                .disabled(isHapticsRunning) // Disable pickers when haptics are running
+
+                Spacer()
+
+                // MARK: - Start/Stop Buttons
+                if isHapticsRunning {
+                    Button("Stop Haptics") {
+                        stopHaptics()
+                    }
+                    .tint(.red)
+                } else {
+                    Button("Start Haptics") {
+                        startHaptics()
+                    }
+                    .tint(.green)
+                    .disabled(totalInterval <= 0) // Disable start if interval is 0 or less
+                }
             }
-            .padding(.horizontal)
-            .disabled(isHapticsRunning) // Disable stepper when haptics are running
-
-            Spacer()
-
-            if isHapticsRunning {
-                Button("Stop Haptics") {
-                    stopHaptics()
-                }
-                .tint(.red) // Make the stop button red
-            } else {
-                Button("Start Haptics") {
-                    startHaptics()
-                }
-                .tint(.green) // Make the start button green
+            .onDisappear {
+                stopHaptics()
             }
         }
-        .onDisappear {
-            // Ensure timer is stopped if the view disappears
-            stopHaptics()
-        }
-        // Apply the digital crown rotation effect directly to the view for wider target
-        .focusable() // Make the view focusable for digital crown
-        .digitalCrownRotation($intervalSeconds, from: 1.0, through: 600.0, by: 1.0, sensitivity: .low)
-    }
 
     func playHapticFeedback() {
         WKInterfaceDevice.current().play(.notification) // Play a notification haptic
-        print("Playing watch haptic at interval: \(Int(intervalSeconds)) seconds")
+        print("Playing watch haptic at interval: \(Int(totalInterval)) seconds")
     }
 
     func startHaptics() {
@@ -69,11 +94,11 @@ struct WatchHapticView: View {
         timer?.invalidate()
 
         // Schedule a new timer with the user-selected interval
-        timer = Timer.scheduledTimer(withTimeInterval: intervalSeconds, repeats: true) { _ in
+        timer = Timer.scheduledTimer(withTimeInterval: totalInterval, repeats: true) { _ in
             playHapticFeedback()
         }
         isHapticsRunning = true
-        print("Haptics started with interval: \(Int(intervalSeconds)) seconds.")
+        print("Haptics started with interval: \(Int(totalInterval)) seconds.")
     }
 
     func stopHaptics() {
