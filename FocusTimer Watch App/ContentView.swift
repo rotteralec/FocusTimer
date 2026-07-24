@@ -9,12 +9,83 @@ import SwiftUI
 import WatchKit
 
 
+class ExtendedRuntimeManager: NSObject, ObservableObject, WKExtendedRuntimeSessionDelegate {
+    @Published var isSessionActive = false
+    @Published var sessionError: String?
+    
+    private var session: WKExtendedRuntimeSession?
+    
+    func startSession() {
+        session = WKExtendedRuntimeSession()
+        session?.delegate = self
+        session?.start()
+        print("Starting extended runtime session...")
+    }
+    
+    func stopSession() {
+        session?.invalidate()
+        session = nil
+        isSessionActive = false
+        print("Stopped extended runtime session")
+    }
+    
+    // MARK: - WKExtendedRuntimeSessionDelegate Methods
+    
+    func extendedRuntimeSessionDidStart(_ extendedRuntimeSession: WKExtendedRuntimeSession) {
+        DispatchQueue.main.async {
+            self.isSessionActive = true
+            print("Extended runtime session started successfully")
+        }
+    }
+    
+    func extendedRuntimeSessionWillExpire(_ extendedRuntimeSession: WKExtendedRuntimeSession) {
+        DispatchQueue.main.async {
+            print("Warning: Session will expire soon")
+        }
+    }
+    
+    func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession, 
+                                didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, 
+                                error: Error?) {
+        DispatchQueue.main.async {
+            self.isSessionActive = false
+            
+            let reasonString: String
+            switch reason {
+            case .none:
+                reasonString = "No specific reason"
+            case .expired:
+                reasonString = "Session time limit reached"
+            case .sessionInProgress:
+                reasonString = "Another session is already in progress"
+            case .resignedFrontmost:
+                reasonString = "App resigned frontmost"
+            case .suppressedBySystem:
+                reasonString = "Suppressed by system"
+            case .error:
+                reasonString = "Error occurred"
+            @unknown default:
+                reasonString = "Unknown reason"
+            }
+            
+            print("Session invalidated: \(reasonString)")
+            if let error = error {
+                self.sessionError = error.localizedDescription
+                print("Error: \(error.localizedDescription)")
+            }
+        }
+    }
+}
+
+
 struct WatchHapticView: View {
     @State private var timer: Timer?
     
     @State private var selectedHours: Int = 0
     @State private var selectedMinutes: Int = 0
     @State private var selectedSeconds: Int = 5
+    
+    @StateObject private var runtimeManager = ExtendedRuntimeManager()  // Add this
     
     @State private var isHapticsRunning: Bool = false
     private var wheelWidth: CGFloat = 40.0
@@ -83,6 +154,12 @@ struct WatchHapticView: View {
             .onDisappear {
                 stopHaptics()
             }
+            .onChange(of: runtimeManager.isSessionActive) { oldValue, newValue in
+                if !newValue && isHapticsRunning {
+                    print("Warning: Runtime session ended, stopping haptics")
+                    stopHaptics()
+                }
+            }
         }
 
     func playHapticFeedback() {
@@ -91,6 +168,9 @@ struct WatchHapticView: View {
     }
 
     func startHaptics() {
+        // Start the extended runtime session first
+        runtimeManager.startSession()
+        
         // Invalidate any existing timer to prevent multiple timers running
         timer?.invalidate()
 
@@ -106,6 +186,10 @@ struct WatchHapticView: View {
         timer?.invalidate()
         timer = nil
         isHapticsRunning = false
+        
+        // Stop the extended runtime session
+        runtimeManager.stopSession()
+        
         print("Haptics stopped.")
     }
 }
