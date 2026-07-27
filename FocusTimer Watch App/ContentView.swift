@@ -16,14 +16,22 @@ class ExtendedRuntimeManager: NSObject, ObservableObject, WKExtendedRuntimeSessi
     private var session: WKExtendedRuntimeSession?
     
     func startSession() {
-        if (session != nil) {session?.invalidate()}
-        session = WKExtendedRuntimeSession()
-        session?.delegate = self
+        //Only start session if there isnt a running/scheduled one
+        if let session, session.state == .running || session.state == .scheduled {
+            print("Session already active, ignoring startSession")
+            return
+        }
+        session?.invalidate()
+        //Avoid optional chaining by using temp local session
+        let newSession = WKExtendedRuntimeSession()
+        newSession.delegate = self
+        session = newSession
         session?.start()
         print("Starting extended runtime session...")
     }
     
     func stopSession() {
+        guard session != nil else { return }
         session?.invalidate()
         session = nil
         isSessionActive = false
@@ -174,8 +182,9 @@ struct WatchHapticView: View {
                 stopHaptics()
             }
             .onChange(of: runtimeManager.isSessionActive) { oldValue, newValue in
+                // Only react if the session dropped while it still thinks haptics are running
                 if !newValue && isHapticsRunning {
-                    print("Warning: Runtime session ended, stopping haptics")
+                    print("Warning: Runtime session ended unexpectedly, stopping haptics")
                     stopHaptics()
                 }
             }
