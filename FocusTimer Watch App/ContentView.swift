@@ -9,79 +9,175 @@ import SwiftUI
 import WatchKit
 
 
+class ExtendedRuntimeManager: NSObject, ObservableObject, WKExtendedRuntimeSessionDelegate {
+    @Published var isSessionActive = false
+    @Published var sessionError: String?
+    
+    private var session: WKExtendedRuntimeSession?
+    
+    func startSession() {
+        if (session != nil) {session?.invalidate()}
+        session = WKExtendedRuntimeSession()
+        session?.delegate = self
+        session?.start()
+        print("Starting extended runtime session...")
+    }
+    
+    func stopSession() {
+        session?.invalidate()
+        session = nil
+        isSessionActive = false
+        print("Stopped extended runtime session")
+    }
+    
+    // MARK: - WKExtendedRuntimeSessionDelegate Methods
+    
+    func extendedRuntimeSessionDidStart(_ extendedRuntimeSession: WKExtendedRuntimeSession) {
+        DispatchQueue.main.async {
+            self.isSessionActive = true
+            print("Extended runtime session started successfully")
+        }
+    }
+    
+    func extendedRuntimeSessionWillExpire(_ extendedRuntimeSession: WKExtendedRuntimeSession) {
+        DispatchQueue.main.async {
+            print("Warning: Session will expire soon")
+        }
+    }
+    
+    func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession, 
+                                didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, 
+                                error: Error?) {
+        DispatchQueue.main.async {
+            self.isSessionActive = false
+            
+            let reasonString: String
+            switch reason {
+            case .none:
+                reasonString = "No specific reason"
+            case .expired:
+                reasonString = "Session time limit reached"
+            case .sessionInProgress:
+                reasonString = "Another session is already in progress"
+            case .resignedFrontmost:
+                reasonString = "App resigned frontmost"
+            case .suppressedBySystem:
+                reasonString = "Suppressed by system"
+            case .error:
+                reasonString = "Error occurred"
+            @unknown default:
+                reasonString = "Unknown reason"
+            }
+            
+            print("Session invalidated: \(reasonString)")
+            if let error = error {
+                self.sessionError = error.localizedDescription
+                print("Error: \(error.localizedDescription)")
+            }
+        }
+    }
+}
+
+
 struct WatchHapticView: View {
     @State private var timer: Timer?
     
-    @State private var selectedHours: Int = 0
     @State private var selectedMinutes: Int = 0
     @State private var selectedSeconds: Int = 5
     
+    @StateObject private var runtimeManager = ExtendedRuntimeManager()  // Add this
+    
     @State private var isHapticsRunning: Bool = false
+    @State private var timeRemaining: TimeInterval = 0
     private var wheelWidth: CGFloat = 40.0
     
     var totalInterval: TimeInterval {
-        Double(selectedHours * 3600 + selectedMinutes * 60 + selectedSeconds)
+        Double(selectedMinutes * 60 + selectedSeconds)
     }
-
+    
+    //Center label  countdown
+    var timeString: String {
+        let t = Int(timeRemaining.rounded())
+        let m = (t % 3600) / 60
+        let s = t % 60
+        return String(format: "%d:%02d", m, s)
+    }
+    
+    var progress: CGFloat {
+        guard totalInterval > 0 else { return 0 }
+        return CGFloat(timeRemaining / totalInterval)
+    }
+    
     var body: some View {
             VStack {
-                Text("Haptic Interval")
-                    .font(.headline)
-                    .padding(.bottom, 1)
-
-                // MARK: - Time Pickers (Scrollable Wheels)
-                HStack {
-                    // Hours Picker
-                    Picker("H", selection: $selectedHours) {
-                        ForEach(0..<24) { hour in
-                            Text("\(hour)").tag(hour)
-                        }
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(width: wheelWidth)
-                    .clipped() // Crucial for preventing text overflow
-
-                    // Minutes Picker
-                    Picker("M", selection: $selectedMinutes) {
-                        ForEach(0..<60) { minute in
-                            Text("\(minute)").tag(minute)
-                        }
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(width: wheelWidth) // Adjust width
-                    .clipped()
-
-                    // Seconds Picker
-                    Picker("S", selection: $selectedSeconds) {
-                        ForEach(0..<60) { second in
-                            Text("\(second)").tag(second)
-                        }
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(width: wheelWidth)
-                    .clipped()
-                }
-                .padding(.horizontal, -8) // Slightly reduce horizontal padding if needed
-                .disabled(isHapticsRunning) // Disable pickers when haptics are running
-
-                Spacer()
-
                 // MARK: - Start/Stop Buttons
                 if isHapticsRunning {
-                    Button("Stop Haptics") {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 8)
+                        
+                        Circle()
+                            .trim(from: 0, to: progress)
+                            .stroke(Color.green,
+                                    style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .animation(.linear(duration: 1), value: timeRemaining)
+                        
+                        Text(timeString)
+                            .font(.title3)
+                            .monospacedDigit()
+                    }
+                    .padding()
+                    Button("Stop") {
                         stopHaptics()
                     }
                     .tint(.red)
+                    .font(.caption2)
                 } else {
-                    Button("Start Haptics") {
+                    Text("Haptic Interval")
+                        .font(.headline)
+                        .padding(.bottom, 1)
+                    // MARK: - Time Pickers (Scrollable Wheels)
+                    HStack {
+                        
+                        // Minutes Picker
+                        Picker("M", selection: $selectedMinutes) {
+                            ForEach(0..<60) { minute in
+                                Text("\(minute)").tag(minute)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(width: wheelWidth) // Adjust width
+                        .clipped()
+                        
+                        // Seconds Picker
+                        Picker("S", selection: $selectedSeconds) {
+                            ForEach(0..<60) { second in
+                                Text("\(second)").tag(second)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(width: wheelWidth)
+                        .clipped()
+                    }
+                    .padding(.horizontal, -8) // Slightly reduce horizontal padding if needed
+                    .disabled(isHapticsRunning) // Disable pickers when haptics are running
+                    Button("Start") {
                         startHaptics()
                     }
                     .tint(.green)
+                    .font(.caption)
                     .disabled(totalInterval <= 0) // Disable start if interval is 0 or less
                 }
             }
             .onDisappear {
                 stopHaptics()
+            }
+            .onChange(of: runtimeManager.isSessionActive) { oldValue, newValue in
+                if !newValue && isHapticsRunning {
+                    print("Warning: Runtime session ended, stopping haptics")
+                    stopHaptics()
+                }
             }
         }
 
@@ -91,12 +187,23 @@ struct WatchHapticView: View {
     }
 
     func startHaptics() {
+        // Start the extended runtime session first
+        runtimeManager.startSession()
+        
         // Invalidate any existing timer to prevent multiple timers running
         timer?.invalidate()
+        
+        timeRemaining = totalInterval
 
         // Schedule a new timer with the user-selected interval
-        timer = Timer.scheduledTimer(withTimeInterval: totalInterval, repeats: true) { _ in
-            playHapticFeedback()
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            if timeRemaining <= 1 {
+                playHapticFeedback()
+                timeRemaining = totalInterval
+            } else {
+                timeRemaining -= 1
+            }
+            
         }
         isHapticsRunning = true
         print("Haptics started with interval: \(Int(totalInterval)) seconds.")
@@ -106,6 +213,10 @@ struct WatchHapticView: View {
         timer?.invalidate()
         timer = nil
         isHapticsRunning = false
+        
+        // Stop the extended runtime session
+        runtimeManager.stopSession()
+        
         print("Haptics stopped.")
     }
 }
