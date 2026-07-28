@@ -135,19 +135,22 @@ struct WatchHapticView: View {
                             .font(.title3)
                             .monospacedDigit()
                     }
-                    .padding()
                     Button("Stop") {
                         stopHaptics()
                     }
                     .tint(.red)
                     .font(.caption2)
+                    .controlSize(.small)
                 } else {
                     Text("Haptic Interval")
-                        .font(.headline)
+                        .foregroundStyle(.green)
+                        .font(.system(.headline, design: .rounded, weight: .semibold))
+                        .textCase(.uppercase)
+                        .tracking(1.5)
                         .padding(.bottom, 1)
                     // MARK: - Time Pickers (Scrollable Wheels)
-                    HStack {
-                        
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
                         // Minutes Picker
                         Picker("M", selection: $selectedMinutes) {
                             ForEach(0..<60) { minute in
@@ -155,9 +158,10 @@ struct WatchHapticView: View {
                             }
                         }
                         .pickerStyle(.wheel)
-                        .frame(width: wheelWidth) // Adjust width
-                        .clipped()
-                        
+                        .containerRelativeFrame(.horizontal, count: 100, span: 40, spacing: 0)
+                        //.containerRelativeFrame(.horizontal, count: 6, span: 2, spacing: 8)// Adjust width
+                        //.clipped()
+                        Spacer(minLength: 0)
                         // Seconds Picker
                         Picker("S", selection: $selectedSeconds) {
                             ForEach(0..<60) { second in
@@ -165,17 +169,20 @@ struct WatchHapticView: View {
                             }
                         }
                         .pickerStyle(.wheel)
-                        .frame(width: wheelWidth)
-                        .clipped()
+                        .containerRelativeFrame(.horizontal, count: 100, span: 40, spacing: 0)                        //.containerRelativeFrame(.horizontal, count: 6, span: 2, spacing: 8)
+                        //.clipped()
+                        
+                        Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, -8) // Slightly reduce horizontal padding if needed
+                    .padding(.horizontal, 8) // Slightly reduce horizontal padding if needed
                     .disabled(isHapticsRunning) // Disable pickers when haptics are running
                     Button("Start") {
                         startHaptics()
                     }
                     .tint(.green)
-                    .font(.caption)
-                    .disabled(totalInterval <= 0) // Disable start if interval is 0 or less
+                    .font(.caption2)
+                    .disabled(totalInterval <= 0)
+                    .controlSize(.small)// Disable start if interval is 0 or less
                 }
             }
             .onDisappear {
